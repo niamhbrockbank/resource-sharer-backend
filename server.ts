@@ -30,7 +30,11 @@ client.connect();
 app.get("/resources", async (req, res) => {
   try {
     const response = await client.query("select * from resources order by time_date desc");
-    res.status(200).json(response.rows);
+    if (response.rowCount > 0) {
+      res.status(200).json(response.rows);
+    } else {
+      res.status(404).json({message: "Could not find any rows"})
+    }
   } catch (error) {
     console.error(error);
     res.status(400).json({message: "Ooops"});
@@ -38,11 +42,15 @@ app.get("/resources", async (req, res) => {
 })
 
 // GET /resources/:res-id //get a given resource
-app.get<{res_id: string}>("/resources/:res_id", async (req, res) => { //add type later
+app.get<{res_id: number}>("/resources/:res_id", async (req, res) => { //add type later
   const {res_id} = req.params;
   try {
-    const response = await client.query("select * from resources where resource_id = $1", [parseInt(res_id)]);
-    res.status(200).json(response.rows);
+    const response = await client.query("select * from resources where resource_id = $1", [res_id]);
+    if (response.rowCount === 1) {
+      res.status(200).json(response.rows);
+    } else {
+      res.status(404).json({message: "Could not find any rows or found too many"})
+    }
   } catch (error) {
     console.error(error);
     res.status(400).json({message: "Ooops"});
@@ -50,11 +58,15 @@ app.get<{res_id: string}>("/resources/:res_id", async (req, res) => { //add type
 })
 
 // GET /resources/:res-id/comments //get all comments for a resource
-app.get<{res_id: string}>("/resources/:res_id/comments", async (req, res) => {
+app.get<{res_id: number}>("/resources/:res_id/comments", async (req, res) => {
   const {res_id} = req.params
   try {
-    const response = await client.query("select * from comments where resource_id = $1", [parseInt(res_id)]);
-    res.status(200).json(response.rows);
+    const response = await client.query("select * from comments where resource_id = $1", [res_id]);
+    if (response.rowCount > 0) {
+      res.status(200).json(response.rows);
+    } else {
+      res.status(404).json({message: "Could not find any rows"})
+    }
   } catch (error) {
     console.error(error);
     res.status(400).json({message: "Ooops"});
@@ -65,7 +77,11 @@ app.get<{res_id: string}>("/resources/:res_id/comments", async (req, res) => {
 app.get("/tags", async (req, res) => {
   try {
     const response = await client.query("select * from tags");
-    res.status(200).json(response.rows);
+    if (response.rowCount > 0) {
+      res.status(200).json(response.rows);
+    } else {
+      res.status(404).json({message: "Could not find any rows"})
+    }
   } catch(error) {
     console.error(error);
     res.status(400).json({message: "Ooops"});
@@ -75,8 +91,12 @@ app.get("/tags", async (req, res) => {
 // GET /users //get all the users
 app.get("/users", async (req, res) => {
   try {
-    const response = await client.query("select * from users");
-    res.status(200).json(response.rows);
+    const response = await client.query("select * from users order by name asc");
+    if (response.rowCount > 0) {
+      res.status(200).json(response.rows);
+    } else {
+      res.status(404).json({message: "Could not find any rows"})
+    }
   } catch(error) {
     console.error(error);
     res.status(400).json({message: "Ooops"});
@@ -84,11 +104,15 @@ app.get("/users", async (req, res) => {
 })
 
 // GET /users/:user-id/study-list //get user's study list
-app.get<{user_id: string}>("/users/:user_id/study-list", async (req, res) => {
+app.get<{user_id: number}>("/users/:user_id/study-list", async (req, res) => {
   const {user_id} = req.params;
   try {
-    const response = await client.query("select * from study_list where user_id = $1", [parseInt(user_id)]);
-    res.status(200).json(response.rows);
+    const response = await client.query("select * from study_list where user_id = $1", [user_id]);
+    if (response.rowCount > 0) {
+      res.status(200).json(response.rows);
+    } else {
+      res.status(404).json({message: "Could not find any rows"})
+    }
   } catch (error) {
     console.error(error);
     res.status(400).json({message: "Surprise!"});
@@ -96,12 +120,88 @@ app.get<{user_id: string}>("/users/:user_id/study-list", async (req, res) => {
 })
 
 // DELETE /resources/:res-id //delete a resource
-app.delete<{res_id: string}>("/resources/:res_id");
-// DELETE /resources/:res-id/comments //delete a comment
-// DELETE /resources/:res-id/likes //delete a like or dislike
-// DELETE /tags //delete a tag from the database
-// DELETE /users/:user-id/study-list //delete resource from user's study list
+app.delete<{res_id: number}>("/resources/:res_id", async (req, res) => {
+  const {res_id} = req.params;
+  try {
+    const response = await client.query("delete from resources where resource_id = $1 returning *", [res_id]);
+    if (response.rowCount === 1) {
+      res.status(200).json({status: "success", message: `Deleted resource ${res_id}`})
+    } else {
+      res.status(400).json({message: "This could be bad!"});
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({message: "Surprise!"});
+  }
+});
 
+// DELETE /resources/:res-id/comments //delete a single comment
+app.delete<{comment_id: number}>("/resources/comments/:comment_id", async (req, res) => {
+  const {comment_id} = req.params;
+  try {
+    const response = await client.query("delete from comments where comment_id = $1 returning *", [comment_id]);
+    if (response.rowCount === 1) {
+      res.status(200).json({status: "success", message: `Deleted comment ${comment_id}`})
+    } else {
+      res.status(400).json({message: "Couldn't find comment or deleted all!"});
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({message: "Surprise!"});
+  }
+}
+)
+
+// DELETE /resources/:res-id/likes //delete a like or dislike
+app.delete<{res_id: number}>("/resources/:res_id/likes", async (req, res) => {
+  const {res_id} = req.params;
+  try {
+    const response = await client.query("delete from likes where resource_id = $1 returning *", [res_id]);
+    if (response.rowCount === 1) {
+      res.status(200).json({status: "success", message: `Deleted your like/dislike from ${res_id}`})
+    } else {
+      res.status(400).json({message: "Couldn't find your like/dislike or deleted all!"});
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({message: "Surprise!"});
+  }
+}
+)
+
+// DELETE /tags //delete a tag from the database
+app.delete("/tags", async (req, res) => {
+  const {tag_name} = req.body;
+  try {
+    const response = await client.query("delete from tags where tag_name = $1 returning *", [tag_name]);
+    if (response.rowCount === 1) {
+      res.status(200).json({status: "success", message: `Deleted the tag ${tag_name}`})
+    } else {
+      res.status(400).json({message: "Something went wrong"});
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({message: "Surprise!"});
+  }
+})
+
+// DELETE /users/:user-id/study-list //delete resource from user's study list
+app.delete<{user_id: number}>("/users/:user_id/study-list", async (req, res) => {
+  const {user_id} = req.params;
+  const {resource_id} = req.body;
+  try {
+    const response = await client.query("delete from study_list where user_id = $1 and resource_id = $2 returning *", 
+      [user_id, parseInt(resource_id)]);
+    if (response.rowCount === 1) {
+      res.status(200).json({status: "success", message: `Deleted resource ${resource_id} from your study-list`})
+    } else {
+      res.status(400).json({message: "Something went wrong"});
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({message: "Surprise!"});
+  }
+})
 
 //Start the server on the given port
 const port = process.env.PORT;
