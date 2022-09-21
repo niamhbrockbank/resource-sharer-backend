@@ -80,7 +80,18 @@ app.post<{res_id: string}, {}, {user_id: number, like_or_dislike: "like" | "disl
     console.error(error);
     res.status(400).json({status: error});
   }
-})
+});
+
+app.post<{}, {}, {tag_name: string}>("/tags", async (req, res) => {
+  const {tag_name} = req.body;
+  try {
+    const dbResponse = await client.query(`INSERT INTO tags VALUES ($1)`, [tag_name]);
+    res.status(201).json(dbResponse);
+  } catch (error) {
+    console.error(error);
+    res.status(400).json(error);
+  }
+});
 
 //Start the server on the given port
 const port = process.env.PORT;
