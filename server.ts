@@ -30,7 +30,7 @@ client.connect();
 app.get("/resources", async (req, res) => {
   try {
     const response = await client.query("select * from resources order by time_date desc");
-    res.json(response.rows);
+    res.status(200).json(response.rows);
   } catch (error) {
     console.error(error);
     res.status(400).json({message: "Ooops"});
@@ -38,11 +38,11 @@ app.get("/resources", async (req, res) => {
 })
 
 // GET /resources/:res-id //get a given resource
-app.get("/resources/:resID", async (req, res) => { //add type later
-  const {resID} = req.params;
+app.get<{res_id: string}>("/resources/:res_id", async (req, res) => { //add type later
+  const {res_id} = req.params;
   try {
-    const response = await client.query("select * from resources where resource_id = $1", [parseInt(resID)]);
-    res.json(response.rows);
+    const response = await client.query("select * from resources where resource_id = $1", [parseInt(res_id)]);
+    res.status(200).json(response.rows);
   } catch (error) {
     console.error(error);
     res.status(400).json({message: "Ooops"});
@@ -50,11 +50,11 @@ app.get("/resources/:resID", async (req, res) => { //add type later
 })
 
 // GET /resources/:res-id/comments //get all comments for a resource
-app.get("/resources/:resID/comments", async (req, res) => {
-  const {resID} = req.params
+app.get<{res_id: string}>("/resources/:res_id/comments", async (req, res) => {
+  const {res_id} = req.params
   try {
-    const response = await client.query("select * from comments where resource_id = $1", [parseInt(resID)]);
-    res.json(response.rows);
+    const response = await client.query("select * from comments where resource_id = $1", [parseInt(res_id)]);
+    res.status(200).json(response.rows);
   } catch (error) {
     console.error(error);
     res.status(400).json({message: "Ooops"});
@@ -65,7 +65,7 @@ app.get("/resources/:resID/comments", async (req, res) => {
 app.get("/tags", async (req, res) => {
   try {
     const response = await client.query("select * from tags");
-    res.json(response.rows);
+    res.status(200).json(response.rows);
   } catch(error) {
     console.error(error);
     res.status(400).json({message: "Ooops"});
@@ -76,7 +76,7 @@ app.get("/tags", async (req, res) => {
 app.get("/users", async (req, res) => {
   try {
     const response = await client.query("select * from users");
-    res.json(response.rows);
+    res.status(200).json(response.rows);
   } catch(error) {
     console.error(error);
     res.status(400).json({message: "Ooops"});
@@ -84,16 +84,24 @@ app.get("/users", async (req, res) => {
 })
 
 // GET /users/:user-id/study-list //get user's study list
-app.get("/users/:userID/study-list", async (req, res) => {
-  const {userID} = req.params;
+app.get<{user_id: string}>("/users/:user_id/study-list", async (req, res) => {
+  const {user_id} = req.params;
   try {
-    const response = await client.query("select * from study_list where user_id = $1", [parseInt(userID)]);
-    res.json(response.rows);
+    const response = await client.query("select * from study_list where user_id = $1", [parseInt(user_id)]);
+    res.status(200).json(response.rows);
   } catch (error) {
     console.error(error);
     res.status(400).json({message: "Surprise!"});
   }
 })
+
+// DELETE /resources/:res-id //delete a resource
+app.delete<{res_id: string}>("/resources/:res_id");
+// DELETE /resources/:res-id/comments //delete a comment
+// DELETE /resources/:res-id/likes //delete a like or dislike
+// DELETE /tags //delete a tag from the database
+// DELETE /users/:user-id/study-list //delete resource from user's study list
+
 
 //Start the server on the given port
 const port = process.env.PORT;
