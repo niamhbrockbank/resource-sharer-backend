@@ -38,7 +38,7 @@ app.use(cors()) //add CORS support to each following route handler
 const client = new Client("localResourceDB");
 client.connect();
 
-app.post<IResource>("/resources", async (req, res) => {
+app.post<{}, {}, IResource>("/resources", async (req, res) => {
   const {resource_name, author_name, url, description, content_type, build_stage, opinion, opinion_reason, user_id} = req.body;    
   try {
     const dbResponse = await client.query(`INSERT INTO resources (resource_name, author_name, url, description, content_type, build_stage, opinion, opinion_reason, user_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`, [resource_name, author_name, url, description, content_type, build_stage, opinion, opinion_reason, user_id]);
@@ -49,6 +49,17 @@ app.post<IResource>("/resources", async (req, res) => {
   }
 });
 
+app.post<{res_id: string}, {}, {comment_body: string, user_id: number}>("/resources/:res_id/comments", async (req, res) => {
+  const res_id = parseInt(req.params.res_id);
+  const {comment_body, user_id} = req.body;
+  try {
+    const dbResponse = await client.query(`INSERT INTO comments (comment_body, user_id, resource_id) VALUES ($1, $2, $3) RETURNING *`, [comment_body, user_id, res_id]);
+    res.status(201).json(dbResponse);
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({status: error});
+  }
+});
 
 //Start the server on the given port
 const port = process.env.PORT;
