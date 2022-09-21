@@ -54,7 +54,7 @@ app.post<{res_id: string}, {}, {comment_body: string, user_id: number}>("/resour
   const {comment_body, user_id} = req.body;
   try {
     const dbResponse = await client.query(`INSERT INTO comments (comment_body, user_id, resource_id) VALUES ($1, $2, $3) RETURNING *`, [comment_body, user_id, res_id]);
-    res.status(201).json(dbResponse);
+    res.status(201).json(dbResponse.rows);
   } catch (error) {
     console.error(error);
     res.status(400).json({status: error});
@@ -85,8 +85,20 @@ app.post<{res_id: string}, {}, {user_id: number, like_or_dislike: "like" | "disl
 app.post<{}, {}, {tag_name: string}>("/tags", async (req, res) => {
   const {tag_name} = req.body;
   try {
-    const dbResponse = await client.query(`INSERT INTO tags VALUES ($1)`, [tag_name]);
-    res.status(201).json(dbResponse);
+    const dbResponse = await client.query(`INSERT INTO tags VALUES ($1) RETURNING *`, [tag_name]);
+    res.status(201).json(dbResponse.rows);
+  } catch (error) {
+    console.error(error);
+    res.status(400).json(error);
+  }
+});
+
+app.post<{user_id: string}, {}, {resource_id: number}>("/users/:user_id/study_list", async (req, res) => {
+  const user_id = parseInt(req.params.user_id);
+  const {resource_id} = req.body;
+  try {
+    const dbResponse = await client.query(`INSERT INTO study_list (user_id, resource_id) VALUES ($1, $2) RETURNING *`, [user_id, resource_id]);
+    res.status(201).json(dbResponse.rows);
   } catch (error) {
     console.error(error);
     res.status(400).json(error);
