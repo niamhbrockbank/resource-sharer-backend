@@ -3,6 +3,18 @@ import { config } from "dotenv";
 import express from "express";
 import cors from "cors";
 
+interface IResource {
+  resource_name: string,
+  author_name: string,
+  url: string,
+  description: string,
+  content_type: string,
+  build_stage: string,
+  opinion: string,
+  opinion_reason: string,
+  user_id: number
+}
+
 config(); //Read .env file lines as though they were env vars.
 
 //Call this script with the environment variable LOCAL set if you want to connect to a local db (i.e. without SSL)
@@ -23,12 +35,18 @@ const app = express();
 app.use(express.json()); //add body parser to each following route handler
 app.use(cors()) //add CORS support to each following route handler
 
-const client = new Client(dbConfig);
+const client = new Client("localResourceDB");
 client.connect();
 
-app.get("/", async (req, res) => {
-  const dbres = await client.query('select * from categories');
-  res.json(dbres.rows);
+app.post<IResource>("/resources", async (req, res) => {
+  const {resource_name, author_name, url, description, content_type, build_stage, opinion, opinion_reason, user_id} = req.body;    
+  try {
+    const dbResponse = await client.query(`INSERT INTO resources (resource_name, author_name, url, description, content_type, build_stage, opinion, opinion_reason, user_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`, [resource_name, author_name, url, description, content_type, build_stage, opinion, opinion_reason, user_id]);
+    res.status(201).json(dbResponse.rows);
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({status: error});
+  }
 });
 
 
