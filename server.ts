@@ -61,6 +61,27 @@ app.post<{res_id: string}, {}, {comment_body: string, user_id: number}>("/resour
   }
 });
 
+// See if it is possible to return from SQL statement
+app.post<{res_id: string}, {}, {user_id: number, like_or_dislike: "like" | "dislike"}>("/resources/:res_id/likes", async (req, res) => {
+  const res_id = parseInt(req.params.res_id);
+  const {user_id, like_or_dislike} = req.body;
+  const like_boolean = like_or_dislike === "like" ? true : false;
+  try {
+    const dbResponse = await client.query(`do 
+    $do$
+    begin
+    if exists (select * from likes where user_id = $1 and resource_id = $2) then update likes set liked = $3 where user_id = $1 and resource_id = $2;
+    else insert into likes values ($1, $2, $3);
+    end if;
+    end 
+    $do$`, [user_id, res_id, like_boolean]);
+    res.status(200);
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({status: error});
+  }
+})
+
 //Start the server on the given port
 const port = process.env.PORT;
 if (!port) {
