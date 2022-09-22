@@ -35,7 +35,7 @@ const app = express();
 app.use(express.json()); //add body parser to each following route handler
 app.use(cors()) //add CORS support to each following route handler
 
-const client = new Client("localResourceDB");
+const client = new Client(dbConfig);
 client.connect();
 
 app.post<{}, {}, IResource>("/resources", async (req, res) => {
@@ -279,7 +279,7 @@ app.put<{comment_id: number}, {}, {comment_body: string}>("/resources/comments/:
   const {comment_id} = req.params;
   const {comment_body} = req.body;
   try {
-    const dbResponse = await client.query(`UPDATE comments SET comment_body=$1 WHERE comment_id=$2`, [comment_body, comment_id])
+    const dbResponse = await client.query(`UPDATE comments SET comment_body=$1 WHERE comment_id=$2 RETURNING *`, [comment_body, comment_id])
     if (dbResponse.rowCount === 1) {
       res.status(200).json(dbResponse.rows);
     } else {
