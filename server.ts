@@ -69,8 +69,8 @@ app.post<{res_id: number}, {}, {user_id: number, like_or_dislike: "like" | "disl
   try {
     const dbResponse = await client.query(`
     INSERT INTO resource_likes VALUES ($1,$2,$3) 
-    ON CONFLICT (user_id,resource_id) 
-    DO UPDATE SET liked = $3 RETURNING *; `, [user_id, res_id, like_boolean]);
+    ON CONFLICT (resource_id, user_id) 
+    DO UPDATE SET liked = $3 RETURNING *; `, [res_id, user_id, like_boolean]);
     res.status(200).json(dbResponse);
   } catch (error) {
     console.error(error);
