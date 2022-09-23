@@ -35,7 +35,7 @@ const app = express();
 app.use(express.json()); //add body parser to each following route handler
 app.use(cors()) //add CORS support to each following route handler
 
-const client = new Client(dbConfig);
+const client = new Client("resourcedb");
 client.connect();
 
 app.post<{}, {}, IResource>("/resources", async (req, res) => {
@@ -68,9 +68,9 @@ app.post<{res_id: number}, {}, {user_id: number, like_or_dislike: "like" | "disl
   const like_boolean = like_or_dislike === "like" ? true : false;
   try {
     const dbResponse = await client.query(`
-    INSERT INTO likes VALUES ($1,$2,$3) 
-    ON CONFLICT (user_id,resource_id) 
-    DO UPDATE SET liked = $3 RETURNING *; `, [user_id, res_id, like_boolean]);
+    INSERT INTO resource_likes VALUES ($1,$2,$3) 
+    ON CONFLICT (resource_id, user_id) 
+    DO UPDATE SET liked = $3 RETURNING *; `, [res_id, user_id, like_boolean]);
     res.status(200).json(dbResponse);
   } catch (error) {
     console.error(error);
@@ -101,6 +101,23 @@ const {user_id} = req.params;
   }
 });
 
+// POST a like or dislike for a particular comment
+app.post<{comment_id: number}, {}, {user_id: number, like_or_dislike: "like" | "dislike"}>("/resources/comments/:comment_id/likes", async (req, res) => {
+  const {comment_id}= req.params;
+  const {user_id, like_or_dislike} = req.body;
+  const like_boolean = like_or_dislike === "like" ? true : false;
+  try {
+    const dbResponse = await client.query(`
+    INSERT INTO comment_likes VALUES ($1,$2,$3) 
+    ON CONFLICT (comment_id, user_id) 
+    DO UPDATE SET liked = $3 RETURNING *; `, [comment_id, user_id, like_boolean]);
+    res.status(200).json(dbResponse);
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({status: error});
+  }
+});
+
 // GET /resources //get all resources
 app.get("/resources", async (req, res) => {
   try {
@@ -128,11 +145,35 @@ app.get<{res_id: number}>("/resources/:res_id", async (req, res) => {
   }
 })
 
+// GET /resources/:res-id/likes
+app.get<{res_id: number}>("/resources/:res_id/likes", async (req, res) => {
+  const {res_id} = req.params;
+  try {
+    const dbResponse = await client.query(`select liked, count(*) from resource_likes where resource_id = $1 group by (liked);`, [res_id]);
+    res.status(200).json(dbResponse.rows);
+  } catch (error) {
+    console.error(error);
+    res.status(400).json(error);
+  }
+})
+
 // GET /resources/:res-id/comments //get all comments for a resource
 app.get<{res_id: number}>("/resources/:res_id/comments", async (req, res) => {
   const {res_id} = req.params
   try {
     const dbResponse = await client.query("select * from comments where resource_id = $1", [res_id]);
+    res.status(200).json(dbResponse.rows);
+  } catch (error) {
+    console.error(error);
+    res.status(400).json(error);
+  }
+})
+
+// GET /resources/comments/:comment_id/likes
+app.get<{comment_id: number}>("/resources/comments/:comment_id/likes", async (req, res) => {
+  const {comment_id} = req.params;
+  try {
+    const dbResponse = await client.query(`select liked, count(*) from comment_likes where comment_id = $1 group by (liked);`, [comment_id]);
     res.status(200).json(dbResponse.rows);
   } catch (error) {
     console.error(error);
@@ -212,9 +253,27 @@ app.delete<{res_id: number}, {}, {user_id: number}>("/resources/:res_id/likes", 
   const {res_id} = req.params;
   const {user_id} = req.body;
   try {
-    const dbResponse = await client.query("delete from likes where resource_id = $1 and user_id=$2 returning *", [res_id, user_id]);
+    const dbResponse = await client.query("delete from resource_likes where resource_id = $1 and user_id=$2 returning *", [res_id, user_id]);
     if (dbResponse.rowCount === 1) {
       res.status(200).json({status: "success", message: `Deleted your like/dislike from ${res_id}`})
+    } else {
+      res.status(400).json({message: "Did not delete exactly one like/dislike"});
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(400).json(error);
+  }
+}
+)
+
+// DELETE from comment_likes
+app.delete<{comment_id: number}, {}, {user_id: number}>("/resources/comments/:comment_id/likes", async (req, res) => {
+  const {comment_id} = req.params;
+  const {user_id} = req.body;
+  try {
+    const dbResponse = await client.query("delete from comment_likes where comment_id = $1 and user_id=$2 returning *", [comment_id, user_id]);
+    if (dbResponse.rowCount === 1) {
+      res.status(200).json({status: "success", message: `Deleted your like/dislike from ${comment_id}`})
     } else {
       res.status(400).json({message: "Did not delete exactly one like/dislike"});
     }
