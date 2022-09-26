@@ -3,7 +3,7 @@ import { config } from "dotenv";
 import express from "express";
 import cors from "cors";
 
-interface IResource {
+interface IResourceSubmit {
   resource_name: string,
   author_name: string,
   url: string,
@@ -12,7 +12,8 @@ interface IResource {
   build_stage: string,
   opinion: string,
   opinion_reason: string,
-  user_id: number
+  user_id: number,
+  tag_array: {tag_name: string}[]
 }
 
 config(); //Read .env file lines as though they were env vars.
@@ -38,10 +39,22 @@ app.use(cors()) //add CORS support to each following route handler
 const client = new Client("resourcedb");
 client.connect();
 
-app.post<{}, {}, IResource>("/resources", async (req, res) => {
-  const {resource_name, author_name, url, description, content_type, build_stage, opinion, opinion_reason, user_id} = req.body;    
+app.post<{}, {}, IResourceSubmit>("/resources", async (req, res) => {
+  const {resource_name, author_name, url, description, content_type, build_stage, opinion, opinion_reason, user_id, tag_array} = req.body;    
   try {
-    const dbResponse = await client.query(`INSERT INTO resources (resource_name, author_name, url, description, content_type, build_stage, opinion, opinion_reason, user_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`, [resource_name, author_name, url, description, content_type, build_stage, opinion, opinion_reason, user_id]);
+    const dbResponse = await client.query(`INSERT INTO resources (resource_name, author_name, url, description, content_type, build_stage, opinion, opinion_reason, user_id) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`, 
+      [resource_name, author_name, url, description, content_type, build_stage, opinion, opinion_reason, user_id]);
+    const {resource_id} = dbResponse.rows[0];
+    const existingTags = await client.query(`SELECT * from tags`);
+    const existingTagNames = existingTags.rows.map(tagRow => tagRow.tag_name);
+    const newTags = tag_array.map(postedTag => postedTag.tag_name).filter(newTag => !existingTagNames.includes(newTag));
+    for (const newTag of newTags) {
+      await client.query(`INSERT INTO tags VALUES ($1)`, [newTag]);
+    }
+    for (const tag of tag_array) {
+      await client.query(`INSERT INTO resource_tags VALUES ($1, $2)`, [resource_id, tag.tag_name]);
+    }
     res.status(201).json(dbResponse.rows);
   } catch (error) {
     console.error(error);
@@ -340,11 +353,25 @@ app.delete<{user_id: number}, {}, {resource_id: number}>("/users/:user_id/study-
   }
 });
 
-app.put<{res_id: number}, {}, IResource>("/resources/:res_id", async (req, res) => {
+app.put<{res_id: number}, {}, IResourceSubmit>("/resources/:res_id", async (req, res) => {
   const {res_id} = req.params
-  const {resource_name, author_name, url, description, content_type, build_stage, opinion, opinion_reason, user_id} = req.body;    
+  const {resource_name, author_name, url, description, content_type, build_stage, opinion, opinion_reason, user_id, tag_array} = req.body;    
   try {
-    const dbResponse = await client.query(`UPDATE resources SET resource_name=$1, author_name=$2, url=$3, description=$4, content_type=$5, build_stage=$6, opinion=$7, opinion_reason=$8, user_id=$9 WHERE resource_id=$10 RETURNING *`, [resource_name, author_name, url, description, content_type, build_stage, opinion, opinion_reason, user_id, res_id]);
+    const dbResponse = await client.query(`UPDATE resources 
+      SET resource_name=$1, author_name=$2, url=$3, description=$4, content_type=$5, build_stage=$6, 
+      opinion=$7, opinion_reason=$8, user_id=$9 WHERE resource_id=$10 RETURNING *`, 
+      [resource_name, author_name, url, description, content_type, build_stage, opinion, opinion_reason, user_id, res_id]);
+    const {resource_id} = dbResponse.rows[0];
+    await client.query(`DELETE FROM resource_tags WHERE resource_id = $1`, [resource_id]);
+    const existingTags = await client.query(`SELECT * from tags`);
+    const existingTagNames = existingTags.rows.map(tagRow => tagRow.tag_name);
+    const newTags = tag_array.map(postedTag => postedTag.tag_name).filter(newTag => !existingTagNames.includes(newTag));
+    for (const newTag of newTags) {
+      await client.query(`INSERT INTO tags VALUES ($1)`, [newTag]);
+    }
+    for (const tag of tag_array) {
+      await client.query(`INSERT INTO resource_tags VALUES ($1, $2)`, [resource_id, tag.tag_name]);
+    }
     if (dbResponse.rowCount === 1) {
       res.status(201).json(dbResponse.rows);
     } else {
