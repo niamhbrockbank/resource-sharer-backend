@@ -181,6 +181,28 @@ app.get<{comment_id: number}>("/resources/comments/:comment_id/likes", async (re
   }
 })
 
+// GET /opinions 
+app.get("/opinions", async (req, res) => {
+  try {
+    const dbResponse = await client.query("select * from recommendation_state");
+    res.status(200).json(dbResponse.rows);
+  } catch(error) {
+    console.error(error);
+    res.status(400).json(error);
+  }
+})
+
+// GET /stage_names 
+app.get("/stage_names", async (req, res) => {
+  try {
+    const dbResponse = await client.query("select * from build_stage");
+    res.status(200).json(dbResponse.rows);
+  } catch(error) {
+    console.error(error);
+    res.status(400).json(error);
+  }
+})
+
 // GET /tags //get all the tags
 app.get("/tags", async (req, res) => {
   try {
