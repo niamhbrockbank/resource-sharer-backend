@@ -91,17 +91,6 @@ app.post<{res_id: number}, {}, {user_id: number, like_or_dislike: "like" | "disl
   }
 });
 
-app.post<{}, {}, {tag_name: string}>("/tags", async (req, res) => {
-  const {tag_name} = req.body;
-  try {
-    const dbResponse = await client.query(`INSERT INTO tags VALUES ($1) RETURNING *`, [tag_name]);
-    res.status(201).json(dbResponse.rows);
-  } catch (error) {
-    console.error(error);
-    res.status(400).json(error);
-  }
-});
-
 app.post<{user_id: number}, {}, {resource_id: number}>("/users/:user_id/study_list", async (req, res) => {
 const {user_id} = req.params;
   const {resource_id} = req.body;
