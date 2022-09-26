@@ -98,6 +98,12 @@ CREATE TABLE comment_likes
 		REFERENCES users(user_id) ON DELETE CASCADE
 ); 
 
+insert into recommendation_state values ('Have used and recommend'), ('Have used and do not recommend'), ('Have not used, but looks promising');
+
+insert into build_stage values ('0: Welcome to Academy Build'), ('1: Workflows'), ('2: TypeScript and Code Quality'), ('3: React, HTML and CSS'), 
+('4: React and Event Handlers'), ('5: React and useEffect'), ('6: Consolidation: Frontend'), ('7: Node.js and Express'), ('8 - 9: SQL and persistence'),
+('10: Pair Full-stack Projects, week 1'), ('11: Team Full-stack Projects, week 2'), ('12: Team Full-stack Projects, week 3'), 
+('Technical Interview Prep'), ('20: Passion Projects'), ('21: Building a Personal Portfolio');
 
 
 
