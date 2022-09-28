@@ -2,6 +2,7 @@ import { Client } from "pg";
 import { config } from "dotenv";
 import express from "express";
 import cors from "cors";
+import axios from "axios";
 
 interface IResourceSubmit {
   resource_name: string,
@@ -30,6 +31,7 @@ const dbConfig = {
   connectionString: process.env.DATABASE_URL,
   ssl: sslSetting,
 };
+const frontEndURL = process.env.LOCAL ? "http://localhost:3000" : "https://c5c1-frontend.netlify.app"
 
 const app = express();
 
@@ -55,6 +57,8 @@ app.post<{}, {}, IResourceSubmit>("/resources", async (req, res) => {
     for (const tag of tag_array) {
       await client.query(`INSERT INTO resource_tags VALUES ($1, $2)`, [resource_id, tag.tag_name]);
     }
+    await axios.post(process.env.DISCORD_URL,
+      {content: `There's a new resource (${dbResponse.rows[0].resource_name}) on ${frontEndURL}!`});
     res.status(201).json(dbResponse.rows);
   } catch (error) {
     console.error(error);
