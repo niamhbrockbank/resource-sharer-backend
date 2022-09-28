@@ -38,7 +38,7 @@ const app = express();
 app.use(express.json()); //add body parser to each following route handler
 app.use(cors()) //add CORS support to each following route handler
 
-const client = new Client("resourcedb");
+const client = new Client(dbConfig);
 client.connect();
 
 app.post<{}, {}, IResourceSubmit>("/resources", async (req, res) => {
@@ -127,7 +127,12 @@ app.post<{comment_id: number}, {}, {user_id: number, like_or_dislike: "like" | "
 // GET /resources //get all resources
 app.get("/resources", async (req, res) => {
   try {
-    const dbResponse = await client.query("select * from resources order by time_date desc");
+    const dbResponse = await client.query(`
+    select resources.*, users.name from resources 
+    join users on 
+      resources.user_id = users.user_id 
+    order by time_date desc
+    `);
     res.status(200).json(dbResponse.rows);
   } catch (error) {
     console.error(error);
