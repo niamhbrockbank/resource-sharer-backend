@@ -128,7 +128,7 @@ app.post<{comment_id: number}, {}, {user_id: number, like_or_dislike: "like" | "
 app.get("/resources", async (req, res) => {
   try {
     const dbResponse = await client.query(`
-    select resources.*, users.name from resources 
+    select resources.*, users.name as user_name from resources 
     join users on 
       resources.user_id = users.user_id 
     order by time_date desc
