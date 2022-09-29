@@ -127,7 +127,10 @@ app.post<{comment_id: number}, {}, {user_id: number, like_or_dislike: "like" | "
 // GET /resources //get all resources
 app.get("/resources", async (req, res) => {
   try {
-    const dbResponse = await client.query("select * from resources order by time_date desc");
+    const dbResponse = await client.query(`select resources.*, array_agg(resource_tags.tag_name) as tag_array from
+      resources join resource_tags
+      on resources.resource_id = resource_tags.resource_id
+      group by resources.resource_id`);
     res.status(200).json(dbResponse.rows);
   } catch (error) {
     console.error(error);
