@@ -17,6 +17,7 @@ interface IResourceSubmit {
   tag_array: {tag_name: string}[]
 }
 
+
 config(); //Read .env file lines as though they were env vars.
 
 //Call this script with the environment variable LOCAL set if you want to connect to a local db (i.e. without SSL)
