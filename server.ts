@@ -18,6 +18,7 @@ interface IResourceSubmit {
   tag_array: {tag_name: string}[]
 }
 
+
 config(); //Read .env file lines as though they were env vars.
 
 //Call this script with the environment variable LOCAL set if you want to connect to a local db (i.e. without SSL)
@@ -39,7 +40,7 @@ const app = express();
 app.use(express.json()); //add body parser to each following route handler
 app.use(cors()) //add CORS support to each following route handler
 
-const client = new Client("resources_db");
+const client = new Client(dbConfig);
 client.connect();
 
 app.post<{}, {}, IResourceSubmit>("/resources", async (req, res) => {
@@ -169,7 +170,7 @@ app.get<{res_id: number}>("/resources/:res_id/comments", async (req, res) => {
   const {res_id} = req.params
   try {
     const dbResponse = await client.query(`select comments.*, users.name as user_name from comments join users 
-      on comments.user_id = users.user_id where resource_id = $1`, [res_id]);
+      on comments.user_id = users.user_id where resource_id = $1 order by comments.time_date desc`, [res_id]);
     res.status(200).json(dbResponse.rows);
   } catch (error) {
     console.error(error);
