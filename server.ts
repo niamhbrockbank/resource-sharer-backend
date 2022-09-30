@@ -40,7 +40,7 @@ const app = express();
 app.use(express.json()); //add body parser to each following route handler
 app.use(cors()) //add CORS support to each following route handler
 
-const client = new Client(dbConfig);
+const client = new Client('resources_db');
 client.connect();
 
 app.post<{}, {}, IResourceSubmit>("/resources", async (req, res) => {
@@ -238,7 +238,7 @@ app.get("/users", async (req, res) => {
 app.get<{user_id: number}>("/users/:user_id/study-list", async (req, res) => {
   const {user_id} = req.params;
   try {
-    const dbResponse = await client.query("select * from study_list join resources on study_list.resource_id = resources.resource_id where study_list.user_id = $1", [user_id]);
+    const dbResponse = await client.query("select resource_id from study_list where user_id = $1", [user_id]);
     res.status(200).json(dbResponse.rows);
   } catch (error) {
     console.error(error);
