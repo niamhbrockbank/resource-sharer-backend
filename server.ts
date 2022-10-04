@@ -40,7 +40,7 @@ const app = express();
 app.use(express.json()); //add body parser to each following route handler
 app.use(cors()) //add CORS support to each following route handler
 
-const client = new Client(dbConfig);
+const client = new Client('resources_db');
 client.connect();
 
 app.post<{}, {}, IResourceSubmit>("/resources", async (req, res) => {
@@ -280,9 +280,9 @@ app.delete<{comment_id: number}>("/resources/comments/:comment_id", async (req, 
 )
 
 // DELETE /resources/:res-id/likes //delete a like or dislike
-app.delete<{res_id: number}, {}, {user_id: number}>("/resources/:res_id/likes", async (req, res) => {
+app.delete<{res_id: number, user_id: number}, {}, {}>("/resources/:res_id/:user_id/likes", async (req, res) => {
   const {res_id} = req.params;
-  const {user_id} = req.body;
+  const {user_id} = req.params;
   try {
     const dbResponse = await client.query("delete from resource_likes where resource_id = $1 and user_id=$2 returning *", [res_id, user_id]);
     if (dbResponse.rowCount === 1) {
