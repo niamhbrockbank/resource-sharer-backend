@@ -153,17 +153,6 @@ app.get<{res_id: number}>("/resources/:res_id", async (req, res) => {
   }
 })
 
-// GET /resources/:res-id/likes
-app.get<{res_id: number}>("/resources/:res_id/likes", async (req, res) => {
-  const {res_id} = req.params;
-  try {
-    const dbResponse = await client.query(`select liked, count(*) from resource_likes where resource_id = $1 group by (liked);`, [res_id]);
-    res.status(200).json(dbResponse.rows);
-  } catch (error) {
-    console.error(error);
-    res.status(400).json(error);
-  }
-})
 
 // GET /resources/:res-id/comments //get all comments for a resource
 app.get<{res_id: number}>("/resources/:res_id/comments", async (req, res) => {
