@@ -40,7 +40,7 @@ const app = express();
 app.use(express.json()); //add body parser to each following route handler
 app.use(cors()) //add CORS support to each following route handler
 
-const client = new Client('resources_db');
+const client = new Client(dbConfig);
 client.connect();
 
 app.post<{}, {}, IResourceSubmit>("/resources", async (req, res) => {
