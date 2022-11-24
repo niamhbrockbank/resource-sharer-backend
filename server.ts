@@ -33,7 +33,7 @@ const dbConfig = {
   connectionString: process.env.DATABASE_URL,
   ssl: sslSetting,
 };
-const frontEndURL = process.env.LOCAL ? "http://localhost:3000" : "https://c5c1-frontend.netlify.app"
+const frontEndURL = process.env.LOCAL ? "http://localhost:3000" : "https://resource-sharer.netlify.app/"
 
 const app = express();
 
