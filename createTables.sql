@@ -1,7 +1,21 @@
+DROP TABLE IF EXISTS build_stage CASCADE;
+DROP TABLE IF EXISTS resource_likes CASCADE;
+DROP TABLE IF EXISTS comment_likes CASCADE;
+DROP TABLE IF EXISTS comments CASCADE;
+DROP TABLE IF EXISTS likes CASCADE;
+DROP TABLE IF EXISTS recommendation_state CASCADE;
+DROP TABLE IF EXISTS resources CASCADE;
+DROP TABLE IF EXISTS resource_tags CASCADE;
+DROP TABLE IF EXISTS study_list CASCADE;
+DROP TABLE IF EXISTS tags CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+
 CREATE TABLE tags
 (
 	tag_name VARCHAR(255) PRIMARY KEY
 );
+-- We don't need this table. Instead, we could do  
+-- SELECT DISTINCT tag_name FROM resource_tags
 
 CREATE TABLE users
 (
@@ -46,7 +60,7 @@ CREATE TABLE resource_tags
 	resource_id INTEGER,
 	tag_name VARCHAR(255),
 	
-	CONSTRAINT fk_resource FOREIGN KEY(resource_id) REFERENCES resources(resource_id),
+	CONSTRAINT fk_resource FOREIGN KEY(resource_id) REFERENCES resources(resource_id) ON DELETE CASCADE,
 	CONSTRAINT fk_tag FOREIGN KEY(tag_name) REFERENCES tags(tag_name),
 	
 	PRIMARY KEY(resource_id, tag_name)
@@ -58,6 +72,7 @@ CREATE TABLE comments
 	resource_id INTEGER,
 	comment_body VARCHAR(500),
 	user_id INTEGER,
+	time_date TIMESTAMP DEFAULT NOW(),
 
 	CONSTRAINT fk_resource FOREIGN KEY(resource_id) REFERENCES resources(resource_id) on delete cascade,
 	CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(user_id)
@@ -104,11 +119,3 @@ insert into build_stage values ('0: Welcome to Academy Build'), ('1: Workflows')
 ('4: React and Event Handlers'), ('5: React and useEffect'), ('6: Consolidation: Frontend'), ('7: Node.js and Express'), ('8 - 9: SQL and persistence'),
 ('10: Pair Full-stack Projects, week 1'), ('11: Team Full-stack Projects, week 2'), ('12: Team Full-stack Projects, week 3'), 
 ('Technical Interview Prep'), ('20: Passion Projects'), ('21: Building a Personal Portfolio');
-
-
-
-
-
-
-
-
