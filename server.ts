@@ -139,7 +139,12 @@ app.get("/resources", async (req, res) => {
 app.get<{res_id: number}>("/resources/:res_id", async (req, res) => { 
   const {res_id} = req.params;
   try {
-    const dbResponse = await client.query("select * from resources where resource_id = $1", [res_id]);
+    const dbResponse = await client.query(`
+      SELECT resources.*, users.name AS user_name
+      FROM resources 
+      JOIN users ON users.user_id = resources.user_id
+      WHERE resource_id = $1`
+      , [res_id]);
     if (dbResponse.rowCount === 1) {
       res.status(200).json(dbResponse.rows);
     } else {
@@ -156,8 +161,14 @@ app.get<{res_id: number}>("/resources/:res_id", async (req, res) => {
 app.get<{res_id: number}>("/resources/:res_id/comments", async (req, res) => {
   const {res_id} = req.params
   try {
-    const dbResponse = await client.query(`select comments.*, users.name as user_name from comments join users 
-      on comments.user_id = users.user_id where resource_id = $1 order by comments.time_date desc`, [res_id]);
+    const dbResponse = await client.query(`
+      SELECT comments.*, users.name AS user_name 
+      FROM comments 
+      JOIN users 
+      ON comments.user_id = users.user_id 
+      WHERE resource_id = $1 
+      ORDER BY comments.time_date DESC`
+        , [res_id]);
     res.status(200).json(dbResponse.rows);
   } catch (error) {
     console.error(error);
@@ -191,7 +202,10 @@ app.get("/tags", async (req, res) => {
 // GET /users //get all the users
 app.get("/users", async (req, res) => {
   try {
-    const dbResponse = await client.query("select * from users order by name asc");
+    const dbResponse = await client.query(`
+      SELECT * FROM users 
+      ORDER BY name ASC
+    `);
     res.status(200).json(dbResponse.rows);
   } catch(error) {
     console.error(error);
@@ -200,10 +214,14 @@ app.get("/users", async (req, res) => {
 });
 
 // GET /users/:user-id/study-list //get user's study list
-app.get<{user_id: number}>("/users/:user_id/study-list", async (req, res) => {
+app.get<{user_id: number}>("/users/:user_id/study_list", async (req, res) => {
   const {user_id} = req.params;
   try {
-    const dbResponse = await client.query("select resource_id from study_list where user_id = $1", [user_id]);
+    const dbResponse = await client.query(`
+      SELECT resource_id 
+      FROM study_list 
+      WHERE user_id = $1
+    `, [user_id]);
     res.status(200).json(dbResponse.rows);
   } catch (error) {
     console.error(error);
