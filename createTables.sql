@@ -1,21 +1,18 @@
-DROP TABLE IF EXISTS build_stage CASCADE;
-DROP TABLE IF EXISTS resource_likes CASCADE;
-DROP TABLE IF EXISTS comment_likes CASCADE;
 DROP TABLE IF EXISTS comments CASCADE;
 DROP TABLE IF EXISTS likes CASCADE;
-DROP TABLE IF EXISTS recommendation_state CASCADE;
 DROP TABLE IF EXISTS resources CASCADE;
 DROP TABLE IF EXISTS resource_tags CASCADE;
 DROP TABLE IF EXISTS study_list CASCADE;
 DROP TABLE IF EXISTS tags CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS resource_likes CASCADE;
+DROP TABLE IF EXISTS comment_likes CASCADE;
+DROP TABLE IF EXISTS content_types CASCADE;
 
 CREATE TABLE tags
 (
 	tag_name VARCHAR(255) PRIMARY KEY
 );
--- We don't need this table. Instead, we could do  
--- SELECT DISTINCT tag_name FROM resource_tags
 
 CREATE TABLE users
 (
@@ -24,17 +21,18 @@ CREATE TABLE users
 	is_faculty BOOLEAN
 );
 
-CREATE TABLE build_stage 
+CREATE TABLE content_types 
 (
-	stage_name VARCHAR(255) PRIMARY KEY
+  type VARCHAR(255) PRIMARY KEY
 );
 
-CREATE TABLE recommendation_state
-(
-	opinion VARCHAR(255),
-	PRIMARY KEY (opinion)
-);
-
+INSERT INTO content_types
+VALUES ('Article'), 
+      ('Video'), 
+      ('Documentation'),
+      ('Image'), 
+      ('Tweet'), 
+      ('Other');
 
 CREATE TABLE resources
 (
@@ -43,16 +41,15 @@ CREATE TABLE resources
 	author_name VARCHAR(255),
 	url VARCHAR(2048) UNIQUE,
 	description VARCHAR(500),
-	content_type VARCHAR(255),
-	build_stage VARCHAR(255),
+	content_type TEXT,
 	time_date TIMESTAMP DEFAULT NOW(),
-	opinion VARCHAR(255),
-	opinion_reason VARCHAR(255),
+	rating INTEGER,
+	notes VARCHAR(255),
 	user_id INTEGER,
-
-	CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(user_id),
-	CONSTRAINT fk_build_stage FOREIGN KEY(build_stage) REFERENCES build_stage(stage_name),
-	CONSTRAINT fk_recommendation FOREIGN KEY(opinion) REFERENCES recommendation_state(opinion)
+	
+  	CONSTRAINT rating_check CHECK (rating >= 0 AND rating <= 100),
+  	CONSTRAINT fk_content_type FOREIGN KEY(content_type) REFERENCES content_types(type),
+	CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(user_id)
 );
 
 CREATE TABLE resource_tags 
@@ -60,7 +57,7 @@ CREATE TABLE resource_tags
 	resource_id INTEGER,
 	tag_name VARCHAR(255),
 	
-	CONSTRAINT fk_resource FOREIGN KEY(resource_id) REFERENCES resources(resource_id) ON DELETE CASCADE,
+	CONSTRAINT fk_resource FOREIGN KEY(resource_id) REFERENCES resources(resource_id),
 	CONSTRAINT fk_tag FOREIGN KEY(tag_name) REFERENCES tags(tag_name),
 	
 	PRIMARY KEY(resource_id, tag_name)
@@ -72,7 +69,6 @@ CREATE TABLE comments
 	resource_id INTEGER,
 	comment_body VARCHAR(500),
 	user_id INTEGER,
-	time_date TIMESTAMP DEFAULT NOW(),
 
 	CONSTRAINT fk_resource FOREIGN KEY(resource_id) REFERENCES resources(resource_id) on delete cascade,
 	CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(user_id)
@@ -112,10 +108,3 @@ CREATE TABLE comment_likes
 	CONSTRAINT fk_user FOREIGN KEY (user_id)
 		REFERENCES users(user_id) ON DELETE CASCADE
 ); 
-
-insert into recommendation_state values ('Have used and recommend'), ('Have used and do not recommend'), ('Have not used, but looks promising');
-
-insert into build_stage values ('0: Welcome to Academy Build'), ('1: Workflows'), ('2: TypeScript and Code Quality'), ('3: React, HTML and CSS'), 
-('4: React and Event Handlers'), ('5: React and useEffect'), ('6: Consolidation: Frontend'), ('7: Node.js and Express'), ('8 - 9: SQL and persistence'),
-('10: Pair Full-stack Projects, week 1'), ('11: Team Full-stack Projects, week 2'), ('12: Team Full-stack Projects, week 3'), 
-('Technical Interview Prep'), ('20: Passion Projects'), ('21: Building a Personal Portfolio');
