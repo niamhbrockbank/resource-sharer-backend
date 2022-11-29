@@ -2,7 +2,7 @@ import { Client } from "pg";
 import { config } from "dotenv";
 import express from "express";
 import cors from "cors";
-import axios from "axios";
+// import axios from "axios";
 import { getResourcesQuery } from "./getResourcesQuery";
 
 interface IResourceSubmit {
@@ -11,9 +11,8 @@ interface IResourceSubmit {
   url: string,
   description: string,
   content_type: string,
-  build_stage: string,
-  opinion: string,
-  opinion_reason: string,
+  rating: number,
+  notes: string,
   user_id: number,
   tag_array: {tag_name: string}[]
 }
@@ -33,7 +32,6 @@ const dbConfig = {
   connectionString: process.env.DATABASE_URL,
   ssl: sslSetting,
 };
-const frontEndURL = process.env.LOCAL ? "http://localhost:3000" : "https://resource-sharer.netlify.app/"
 
 const app = express();
 
@@ -44,11 +42,11 @@ const client = new Client(dbConfig);
 client.connect();
 
 app.post<{}, {}, IResourceSubmit>("/resources", async (req, res) => {
-  const {resource_name, author_name, url, description, content_type, build_stage, opinion, opinion_reason, user_id, tag_array} = req.body;    
+  const {resource_name, author_name, url, description, content_type, rating, notes, user_id, tag_array} = req.body;    
   try {
-    const dbResponse = await client.query(`INSERT INTO resources (resource_name, author_name, url, description, content_type, build_stage, opinion, opinion_reason, user_id) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`, 
-      [resource_name, author_name, url, description, content_type, build_stage, opinion, opinion_reason, user_id]);
+    const dbResponse = await client.query(`INSERT INTO resources (resource_name, author_name, url, description, content_type, rating, notes, user_id) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`, 
+      [resource_name, author_name, url, description, content_type, rating, notes, user_id]);
     const {resource_id} = dbResponse.rows[0];
     const existingTags = await client.query(`SELECT * from tags`);
     const existingTagNames = existingTags.rows.map(tagRow => tagRow.tag_name);
@@ -59,8 +57,8 @@ app.post<{}, {}, IResourceSubmit>("/resources", async (req, res) => {
     for (const tag of tag_array) {
       await client.query(`INSERT INTO resource_tags VALUES ($1, $2)`, [resource_id, tag.tag_name]);
     }
-    await axios.post(process.env.DISCORD_URL,
-      {content: `There's a new resource (${dbResponse.rows[0].resource_name}) on ${frontEndURL}!`});
+    // await axios.post(process.env.DISCORD_URL,
+    //   {content: `There's a new resource (${dbResponse.rows[0].resource_name}) on ${frontEndURL}!`});
     res.status(201).json(dbResponse.rows);
   } catch (error) {
     console.error(error);
@@ -174,28 +172,6 @@ app.get<{comment_id: number}>("/resources/comments/:comment_id/likes", async (re
     const dbResponse = await client.query(`select liked, count(*) from comment_likes where comment_id = $1 group by (liked);`, [comment_id]);
     res.status(200).json(dbResponse.rows);
   } catch (error) {
-    console.error(error);
-    res.status(400).json(error);
-  }
-})
-
-// GET /opinions 
-app.get("/opinions", async (req, res) => {
-  try {
-    const dbResponse = await client.query("select * from recommendation_state");
-    res.status(200).json(dbResponse.rows);
-  } catch(error) {
-    console.error(error);
-    res.status(400).json(error);
-  }
-})
-
-// GET /stage_names 
-app.get("/stage_names", async (req, res) => {
-  try {
-    const dbResponse = await client.query("select * from build_stage");
-    res.status(200).json(dbResponse.rows);
-  } catch(error) {
     console.error(error);
     res.status(400).json(error);
   }
@@ -340,12 +316,12 @@ app.delete<{user_id: number}, {}, {resource_id: number}>("/users/:user_id/study-
 
 app.put<{res_id: number}, {}, IResourceSubmit>("/resources/:res_id", async (req, res) => {
   const {res_id} = req.params
-  const {resource_name, author_name, url, description, content_type, build_stage, opinion, opinion_reason, user_id, tag_array} = req.body;    
+  const {resource_name, author_name, url, description, content_type, rating, notes, user_id, tag_array} = req.body;    
   try {
     const dbResponse = await client.query(`UPDATE resources 
-      SET resource_name=$1, author_name=$2, url=$3, description=$4, content_type=$5, build_stage=$6, 
-      opinion=$7, opinion_reason=$8, user_id=$9 WHERE resource_id=$10 RETURNING *`, 
-      [resource_name, author_name, url, description, content_type, build_stage, opinion, opinion_reason, user_id, res_id]);
+      SET resource_name=$1, author_name=$2, url=$3, description=$4, content_type=$5, 
+      rating=$6, notes=$7, user_id=$8 WHERE resource_id=$9 RETURNING *`, 
+      [resource_name, author_name, url, description, content_type, rating, notes, user_id, res_id]);
     const {resource_id} = dbResponse.rows[0];
     await client.query(`DELETE FROM resource_tags WHERE resource_id = $1`, [resource_id]);
     const existingTags = await client.query(`SELECT * from tags`);
