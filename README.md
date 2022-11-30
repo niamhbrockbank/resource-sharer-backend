@@ -1,10 +1,11 @@
-# mark-fullstack-proj--starter-1
+# Resource Sharer
 
+The front end repo for this project can be found <a href='https://github.com/niamhbrockbank/resource-sharer'>here</a>.
 ## Usage:
 
-Instead of cloning this project, click "Use this template".  This will allow you to create a repo on github which has this project's content but which is not a fork of it.
-
-Make sure you create the repo as being owned by your own account not by the WeAreAcademy organisation.
+Set up your local database using the SQL commands within the sql folder.
+ 1. Run `createTables.sql`
+ 2. (Optional) Run `populateData.sql` if you'd like some placeholder data to work with.
 
 
 ## Install
@@ -15,7 +16,7 @@ Make sure you create the repo as being owned by your own account not by the WeAr
 
 Copy .env.example to .env and set `DATABASE_URL` and `PORT` to your liking.
 
-Example for a local database: `DATABASE_URL=postgres://neill@localhost/pastebin`
+Example for a local database: `DATABASE_URL=postgres://userl@localhost/resource_db`
 
 You will need to create your own databases for this project - one locally and one on Heroku.
 
@@ -25,6 +26,3 @@ You will need to create your own databases for this project - one locally and on
 
 This will set the env var LOCAL to true, which will cause the db connection configuration to NOT use SSL (appropriate for your local db)
 
-## running on heroku
-
-When the project is deployed to heroku, the command in your `Procfile` file will be run.
