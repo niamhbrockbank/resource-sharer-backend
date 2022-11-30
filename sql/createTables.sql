@@ -57,7 +57,7 @@ CREATE TABLE resource_tags
 	resource_id INTEGER,
 	tag_name VARCHAR(255),
 	
-	CONSTRAINT fk_resource FOREIGN KEY(resource_id) REFERENCES resources(resource_id),
+	CONSTRAINT fk_resource FOREIGN KEY(resource_id) REFERENCES resources(resource_id) ON DELETE CASCADE,
 	CONSTRAINT fk_tag FOREIGN KEY(tag_name) REFERENCES tags(tag_name),
 	
 	PRIMARY KEY(resource_id, tag_name)
@@ -69,6 +69,7 @@ CREATE TABLE comments
 	resource_id INTEGER,
 	comment_body VARCHAR(500),
 	user_id INTEGER,
+  	time_date TIMESTAMP DEFAULT NOW(),
 
 	CONSTRAINT fk_resource FOREIGN KEY(resource_id) REFERENCES resources(resource_id) on delete cascade,
 	CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(user_id)
