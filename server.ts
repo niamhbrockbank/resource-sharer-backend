@@ -124,6 +124,11 @@ app.post<{comment_id: number}, {}, {user_id: number, like_or_dislike: "like" | "
   }
 });
 
+//GET / //RESTful API homepage
+app.get('/', (req, res) => {
+  res.send('Try /resources for all the resources info or /resources/:resource_id for a specific resource')
+})
+
 // GET /resources //get all resources
 app.get("/resources", async (req, res) => {
   try {
@@ -377,6 +382,11 @@ app.put<{comment_id: number}, {}, {comment_body: string}>("/resources/comments/:
     res.status(400).json(error);
   }
 });
+
+//Catch all endpoint
+app.get('*', (req, res) => {
+  res.status(400).send('Sorry, nothing to see here. Try /resources')
+})
 
 
 //Start the server on the given port
