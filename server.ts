@@ -378,6 +378,11 @@ app.put<{comment_id: number}, {}, {comment_body: string}>("/resources/comments/:
   }
 });
 
+//Catch all endpoint
+app.get('*', (req, res) => {
+  res.status(400).send('Sorry, nothing to see here. Try /resources')
+})
+
 
 //Start the server on the given port
 const port = process.env.PORT;
