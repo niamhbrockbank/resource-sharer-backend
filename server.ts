@@ -124,6 +124,11 @@ app.post<{comment_id: number}, {}, {user_id: number, like_or_dislike: "like" | "
   }
 });
 
+//GET / //RESTful API homepage
+app.get('/', (req, res) => {
+  res.send('Try /resources for all the resources info or /resources/:resource_id for a specific resource')
+})
+
 // GET /resources //get all resources
 app.get("/resources", async (req, res) => {
   try {
