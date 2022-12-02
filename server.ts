@@ -320,7 +320,7 @@ app.delete<{}, {}, {tag_name: string}>("/tags", async (req, res) => {
 })
 
 // DELETE /users/:user-id/study-list //delete resource from user's study list
-app.delete<{user_id: number}, {}, {resource_id: number}>("/users/:user_id/study-list", async (req, res) => {
+app.delete<{user_id: number}, {}, {resource_id: number}>("/users/:user_id/study_list", async (req, res) => {
   const {user_id} = req.params;
   const {resource_id} = req.body;
   try {
