@@ -3,9 +3,11 @@ import { config } from "dotenv";
 import express from "express";
 import cors from "cors";
 // import axios from "axios";
-import { getResourcesQuery } from "./getResourcesQuery";
+import { setUpRouter as setUpResourceRouter } from "./src/routes/resources";
+import { setUpRouter as setUpUserRouter } from "./src/routes/users";
+import { setUpRouter as setUpTagRouter } from "./src/routes/tags";
 
-interface IResourceSubmit {
+export interface IResourceSubmit {
   resource_name: string,
   author_name: string,
   url: string,
@@ -33,361 +35,27 @@ const dbConfig = {
   ssl: sslSetting,
 };
 
+const client = new Client(dbConfig);
+client.connect();
+
 const app = express();
 
 app.use(express.json()); //add body parser to each following route handler
 app.use(cors()) //add CORS support to each following route handler
 
-const client = new Client(dbConfig);
-client.connect();
-
-app.post<{}, {}, IResourceSubmit>("/resources", async (req, res) => {
-  const {resource_name, author_name, url, description, content_type, rating, notes, user_id, tag_array} = req.body;    
-  try {
-    const dbResponse = await client.query(`INSERT INTO resources (resource_name, author_name, url, description, content_type, rating, notes, user_id) 
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`, 
-      [resource_name, author_name, url, description, content_type, rating, notes, user_id]);
-    const {resource_id} = dbResponse.rows[0];
-    const existingTags = await client.query(`SELECT * from tags`);
-    const existingTagNames = existingTags.rows.map(tagRow => tagRow.tag_name);
-    const newTags = tag_array.map(postedTag => postedTag.tag_name).filter(newTag => !existingTagNames.includes(newTag));
-    for (const newTag of newTags) {
-      await client.query(`INSERT INTO tags VALUES ($1)`, [newTag]);
-    }
-    for (const tag of tag_array) {
-      await client.query(`INSERT INTO resource_tags VALUES ($1, $2)`, [resource_id, tag.tag_name]);
-    }
-    // await axios.post(process.env.DISCORD_URL,
-    //   {content: `There's a new resource (${dbResponse.rows[0].resource_name}) on ${frontEndURL}!`});
-    res.status(201).json(dbResponse.rows);
-  } catch (error) {
-    console.error(error);
-    res.status(400).json({status: error});
-  }
-});
-
-app.post<{res_id: number}, {}, {comment_body: string, user_id: number}>("/resources/:res_id/comments", async (req, res) => {
-  const {res_id} = req.params;
-  const {comment_body, user_id} = req.body;
-  try {
-    const dbResponse = await client.query(`INSERT INTO comments (comment_body, user_id, resource_id) VALUES ($1, $2, $3) RETURNING *`, [comment_body, user_id, res_id]);
-    res.status(201).json(dbResponse.rows);
-  } catch (error) {
-    console.error(error);
-    res.status(400).json({status: error});
-  }
-});
-
-// See if it is possible to return from SQL statement
-app.post<{res_id: number}, {}, {user_id: number, like_or_dislike: "like" | "dislike"}>("/resources/:res_id/likes", async (req, res) => {
-  const {res_id}= req.params;
-  const {user_id, like_or_dislike} = req.body;
-  const like_boolean = like_or_dislike === "like" ? true : false;
-  try {
-    const dbResponse = await client.query(`
-    INSERT INTO resource_likes VALUES ($1,$2,$3) 
-    ON CONFLICT (resource_id, user_id) 
-    DO UPDATE SET liked = $3 RETURNING *; `, [res_id, user_id, like_boolean]);
-    res.status(200).json(dbResponse);
-  } catch (error) {
-    console.error(error);
-    res.status(400).json({status: error});
-  }
-});
-
-app.post<{user_id: number}, {}, {resource_id: number}>("/users/:user_id/study_list", async (req, res) => {
-const {user_id} = req.params;
-  const {resource_id} = req.body;
-  try {
-    const dbResponse = await client.query(`INSERT INTO study_list (user_id, resource_id) VALUES ($1, $2) RETURNING *`, [user_id, resource_id]);
-    res.status(201).json(dbResponse.rows);
-  } catch (error) {
-    console.error(error);
-    res.status(400).json(error);
-  }
-});
-
-// POST a like or dislike for a particular comment
-app.post<{comment_id: number}, {}, {user_id: number, like_or_dislike: "like" | "dislike"}>("/resources/comments/:comment_id/likes", async (req, res) => {
-  const {comment_id}= req.params;
-  const {user_id, like_or_dislike} = req.body;
-  const like_boolean = like_or_dislike === "like" ? true : false;
-  try {
-    const dbResponse = await client.query(`
-    INSERT INTO comment_likes VALUES ($1,$2,$3) 
-    ON CONFLICT (comment_id, user_id) 
-    DO UPDATE SET liked = $3 RETURNING *; `, [comment_id, user_id, like_boolean]);
-    res.status(200).json(dbResponse);
-  } catch (error) {
-    console.error(error);
-    res.status(400).json({status: error});
-  }
-});
-
-//GET / //RESTful API homepage
+//GET /homepage
 app.get('/', (req, res) => {
   res.send('Try /resources for all the resources info or /resources/:resource_id for a specific resource')
 })
 
-// GET /resources //get all resources
-app.get("/resources", async (req, res) => {
-  try {
-    const dbResponse = await client.query(getResourcesQuery);
-    res.status(200).json(dbResponse.rows);
-  } catch (error) {
-    console.error(error);
-    res.status(400).json(error);
-  }
-})
+app.use("/resources", setUpResourceRouter(client))
+app.use("/users", setUpUserRouter(client))
+app.use("/tags", setUpTagRouter(client))
 
-// GET /resources/:res-id //get a given resource
-app.get<{res_id: number}>("/resources/:res_id", async (req, res) => { 
-  const {res_id} = req.params;
-  try {
-    const dbResponse = await client.query(`
-      SELECT resources.*, users.name AS user_name
-      FROM resources 
-      JOIN users ON users.user_id = resources.user_id
-      WHERE resource_id = $1`
-      , [res_id]);
-    if (dbResponse.rowCount === 1) {
-      res.status(200).json(dbResponse.rows);
-    } else {
-      res.status(404).json({message: "Could not find any rows or found too many"})
-    }
-  } catch (error) {
-    console.error(error);
-    res.status(400).json(error);
-  }
-})
-
-
-// GET /resources/:res-id/comments //get all comments for a resource
-app.get<{res_id: number}>("/resources/:res_id/comments", async (req, res) => {
-  const {res_id} = req.params
-  try {
-    const dbResponse = await client.query(`
-      SELECT comments.*, users.name AS user_name 
-      FROM comments 
-      JOIN users 
-      ON comments.user_id = users.user_id 
-      WHERE resource_id = $1 
-      ORDER BY comments.time_date DESC`
-        , [res_id]);
-    res.status(200).json(dbResponse.rows);
-  } catch (error) {
-    console.error(error);
-    res.status(400).json(error);
-  }
-})
-
-// GET /resources/comments/:comment_id/likes
-app.get<{comment_id: number}>("/resources/comments/:comment_id/likes", async (req, res) => {
-  const {comment_id} = req.params;
-  try {
-    const dbResponse = await client.query(`select liked, count(*) from comment_likes where comment_id = $1 group by (liked);`, [comment_id]);
-    res.status(200).json(dbResponse.rows);
-  } catch (error) {
-    console.error(error);
-    res.status(400).json(error);
-  }
-})
-
-// GET /tags //get all the tags
-app.get("/tags", async (req, res) => {
-  try {
-    const dbResponse = await client.query("select * from tags");
-    res.status(200).json(dbResponse.rows);
-  } catch(error) {
-    console.error(error);
-    res.status(400).json(error);
-  }
-})
-
-// GET /users //get all the users
-app.get("/users", async (req, res) => {
-  try {
-    const dbResponse = await client.query(`
-      SELECT * FROM users 
-      ORDER BY name ASC
-    `);
-    res.status(200).json(dbResponse.rows);
-  } catch(error) {
-    console.error(error);
-    res.status(400).json(error);
-  }
-});
-
-// GET /users/:user-id/study-list //get user's study list
-app.get<{user_id: number}>("/users/:user_id/study_list", async (req, res) => {
-  const {user_id} = req.params;
-  try {
-    const dbResponse = await client.query(`
-      SELECT resource_id 
-      FROM study_list 
-      WHERE user_id = $1
-    `, [user_id]);
-    res.status(200).json(dbResponse.rows);
-  } catch (error) {
-    console.error(error);
-    res.status(400).json(error);
-  }
-})
-
-// DELETE /resources/:res-id //delete a resource
-app.delete<{res_id: number}>("/resources/:res_id", async (req, res) => {
-  const {res_id} = req.params;
-  try {
-    const dbResponse = await client.query("delete from resources where resource_id = $1 returning *", [res_id]);
-    if (dbResponse.rowCount === 1) {
-      res.status(200).json({status: "success", message: `Deleted resource ${res_id}`})
-    } else {
-      res.status(400).json({message: "Did not delete exactly one resource"});
-    }
-  } catch (error) {
-    console.error(error);
-    res.status(400).json(error);
-  }
-});
-
-// DELETE /resources/:res-id/comments //delete a single comment
-app.delete<{comment_id: number}>("/resources/comments/:comment_id", async (req, res) => {
-  const {comment_id} = req.params;
-  try {
-    const dbResponse = await client.query("delete from comments where comment_id = $1 returning *", [comment_id]);
-    if (dbResponse.rowCount === 1) {
-      res.status(200).json({status: "success", message: `Deleted comment ${comment_id}`})
-    } else {
-      res.status(400).json({message: "Did not delete exactly one comment"});
-    }
-  } catch (error) {
-    console.error(error);
-    res.status(400).json(error);
-  }
-}
-)
-
-// DELETE /resources/:res-id/likes //delete a like or dislike
-app.delete<{res_id: number, user_id: number}, {}, {}>("/resources/:res_id/:user_id/likes", async (req, res) => {
-  const {res_id} = req.params;
-  const {user_id} = req.params;
-  try {
-    const dbResponse = await client.query("delete from resource_likes where resource_id = $1 and user_id=$2 returning *", [res_id, user_id]);
-    if (dbResponse.rowCount === 1) {
-      res.status(200).json({status: "success", message: `Deleted your like/dislike from ${res_id}`})
-    } else {
-      res.status(400).json({message: "Did not delete exactly one like/dislike"});
-    }
-  } catch (error) {
-    console.error(error);
-    res.status(400).json(error);
-  }
-}
-)
-
-// DELETE from comment_likes
-app.delete<{comment_id: number}, {}, {user_id: number}>("/resources/comments/:comment_id/likes", async (req, res) => {
-  const {comment_id} = req.params;
-  const {user_id} = req.body;
-  try {
-    const dbResponse = await client.query("delete from comment_likes where comment_id = $1 and user_id=$2 returning *", [comment_id, user_id]);
-    if (dbResponse.rowCount === 1) {
-      res.status(200).json({status: "success", message: `Deleted your like/dislike from ${comment_id}`})
-    } else {
-      res.status(400).json({message: "Did not delete exactly one like/dislike"});
-    }
-  } catch (error) {
-    console.error(error);
-    res.status(400).json(error);
-  }
-}
-)
-
-// DELETE /tags //delete a tag from the database
-app.delete<{}, {}, {tag_name: string}>("/tags", async (req, res) => {
-  const {tag_name} = req.body;
-  try {
-    const dbResponse = await client.query("delete from tags where tag_name = $1 returning *", [tag_name]);
-    if (dbResponse.rowCount === 1) {
-      res.status(200).json({status: "success", message: `Deleted the tag ${tag_name}`});
-    } else {
-      res.status(400).json({message: "Did not delete exactly one tag"});
-    }
-  } catch (error) {
-    console.error(error);
-    res.status(400).json(error);
-  }
-})
-
-// DELETE /users/:user-id/study-list //delete resource from user's study list
-app.delete<{user_id: number}, {}, {resource_id: number}>("/users/:user_id/study_list", async (req, res) => {
-  const {user_id} = req.params;
-  const {resource_id} = req.body;
-  try {
-    const dbResponse = await client.query("delete from study_list where user_id = $1 and resource_id = $2 returning *", 
-      [user_id, resource_id]);
-    if (dbResponse.rowCount === 1) {
-      res.status(200).json({status: "success", message: `Deleted resource ${resource_id} from your study-list`})
-    } else {
-      res.status(400).json({message: "Did not delete exactly one resource from the study list"});
-    }
-  } catch (error) {
-    console.error(error);
-    res.status(400).json(error);
-  }
-});
-
-app.put<{res_id: number}, {}, IResourceSubmit>("/resources/:res_id", async (req, res) => {
-  const {res_id} = req.params
-  const {resource_name, author_name, url, description, content_type, rating, notes, user_id, tag_array} = req.body;    
-  try {
-    const dbResponse = await client.query(`UPDATE resources 
-      SET resource_name=$1, author_name=$2, url=$3, description=$4, content_type=$5, 
-      rating=$6, notes=$7, user_id=$8 WHERE resource_id=$9 RETURNING *`, 
-      [resource_name, author_name, url, description, content_type, rating, notes, user_id, res_id]);
-    const {resource_id} = dbResponse.rows[0];
-    await client.query(`DELETE FROM resource_tags WHERE resource_id = $1`, [resource_id]);
-    const existingTags = await client.query(`SELECT * from tags`);
-    const existingTagNames = existingTags.rows.map(tagRow => tagRow.tag_name);
-    const newTags = tag_array.map(postedTag => postedTag.tag_name).filter(newTag => !existingTagNames.includes(newTag));
-    for (const newTag of newTags) {
-      await client.query(`INSERT INTO tags VALUES ($1)`, [newTag]);
-    }
-    for (const tag of tag_array) {
-      await client.query(`INSERT INTO resource_tags VALUES ($1, $2)`, [resource_id, tag.tag_name]);
-    }
-    if (dbResponse.rowCount === 1) {
-      res.status(201).json(dbResponse.rows);
-    } else {
-      res.status(400).json("Did not update exactly one row");
-    }
-  } catch (error) {
-    console.error(error);
-    res.status(400).json({status: error});
-  }
-});
-
-app.put<{comment_id: number}, {}, {comment_body: string}>("/resources/comments/:comment_id", async (req, res) => {
-  const {comment_id} = req.params;
-  const {comment_body} = req.body;
-  try {
-    const dbResponse = await client.query(`UPDATE comments SET comment_body=$1 WHERE comment_id=$2 RETURNING *`, [comment_body, comment_id])
-    if (dbResponse.rowCount === 1) {
-      res.status(200).json(dbResponse.rows);
-    } else {
-      res.status(400).json("Did not update exactly one comment");
-    }
-  } catch (error) {
-    console.error(error);
-    res.status(400).json(error);
-  }
-});
-
-//Catch all endpoint
+//GET Catch all endpoint
 app.get('*', (req, res) => {
   res.status(400).send('Sorry, nothing to see here. Try /resources')
 })
-
 
 //Start the server on the given port
 const port = process.env.PORT;
