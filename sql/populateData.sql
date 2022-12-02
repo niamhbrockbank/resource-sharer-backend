@@ -78,7 +78,7 @@ INSERT INTO resource_tags (resource_id, tag_name)
         (2, 'Cypress'),
         (2, 'Frontend'),
        	(3, 'Firebase'),
-        (8, 'React'),
+        (3, 'React'),
         (3, 'Authentication'),
         (3, 'Frontend'),
         (4, 'CSS'),
