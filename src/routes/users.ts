@@ -41,7 +41,12 @@ export function setUpRouter(client : Client): Router{
       const {user_id} = req.params;
         const {resource_id} = req.body;
         try {
-          const dbResponse = await client.query(`INSERT INTO study_list (user_id, resource_id) VALUES ($1, $2) RETURNING *`, [user_id, resource_id]);
+          const dbResponse = await client.query(`
+            INSERT INTO study_list 
+            (user_id, resource_id) 
+            VALUES ($1, $2) 
+            RETURNING *`
+            , [user_id, resource_id]);
           res.status(201).json(dbResponse.rows);
         } catch (error) {
           console.error(error);
@@ -55,7 +60,11 @@ export function setUpRouter(client : Client): Router{
       const {user_id} = req.params;
       const {resource_id} = req.body;
       try {
-        const dbResponse = await client.query("delete from study_list where user_id = $1 and resource_id = $2 returning *", 
+        const dbResponse = await client.query(`
+          DELETE FROM study_list 
+          WHERE user_id = $1 
+          AND resource_id = $2 
+          RETURNING *`, 
           [user_id, resource_id]);
         if (dbResponse.rowCount === 1) {
           res.status(200).json({status: "success", message: `Deleted resource ${resource_id} from your study-list`})
